@@ -19,7 +19,7 @@
 .playerContainer {
   width: 100%;
   max-width: 400px;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 1080 / 1620;
   max-height: calc(100vh - 200px);
   background: #f8f9fa;
   border-radius: 8px;

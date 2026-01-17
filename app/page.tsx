@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import VideoPlayer from './components/VideoPlayer';
+import VideoPlayerCanvas from './components/VideoPlayerCanvas';
 import Timeline from './components/Timeline';
 import { VideoClip, PlayerRef } from './components/types';
 import styles from './page.module.css';
@@ -80,7 +80,7 @@ export default function Home() {
       {/* Main player area */}
       <main className={styles.main}>
         <div className={styles.playerContainer}>
-          <VideoPlayer
+          <VideoPlayerCanvas
             ref={playerRef}
             clips={clips}
             isPlaying={isPlaying}
