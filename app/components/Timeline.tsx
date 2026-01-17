@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useEffect, useState } from 'react';
 import { VideoClip } from './types';
 import ClipStrip from './ClipStrip';
 import styles from './Timeline.module.css';
@@ -32,6 +33,43 @@ export default function Timeline({
   onTrimChange,
   onPlayPause,
 }: TimelineProps) {
+  const clipsRef = useRef<HTMLDivElement>(null);
+  const [playheadPosition, setPlayheadPosition] = useState(0);
+
+  // Calculate playhead position in pixels based on current time
+  useEffect(() => {
+    if (!clipsRef.current || totalDuration === 0) {
+      setPlayheadPosition(0);
+      return;
+    }
+
+    const clipElements = clipsRef.current.children;
+    let accumulatedTime = 0;
+    let pixelPosition = 0;
+
+    for (let i = 0; i < clips.length; i++) {
+      const clip = clips[i];
+      const clipEffectiveDuration = clip.duration - clip.trimStart - clip.trimEnd;
+      const clipElement = clipElements[i] as HTMLElement;
+
+      if (!clipElement) continue;
+
+      // If currentTime falls within this clip
+      if (currentTime < accumulatedTime + clipEffectiveDuration) {
+        const timeIntoClip = currentTime - accumulatedTime;
+        const clipProgress = timeIntoClip / clipEffectiveDuration;
+        pixelPosition += clipProgress * clipElement.offsetWidth;
+        break;
+      }
+
+      // Add this clip's full width plus gap (8px)
+      pixelPosition += clipElement.offsetWidth + 8;
+      accumulatedTime += clipEffectiveDuration;
+    }
+
+    setPlayheadPosition(pixelPosition);
+  }, [currentTime, clips, totalDuration]);
+
   return (
     <div className={styles.timeline}>
       {/* Controls bar */}
@@ -81,18 +119,25 @@ export default function Timeline({
 
       {/* Clip strips */}
       <div className={styles.clipsContainer}>
-        <div className={styles.clips}>
-          {clips.map((clip) => (
-            <ClipStrip
-              key={clip.id}
-              clip={clip}
-              isSelected={clip.id === selectedClipId}
-              onClick={() => onClipSelect(clip.id)}
-              onTrimChange={(trimStart, trimEnd) =>
-                onTrimChange(clip.id, trimStart, trimEnd)
-              }
-            />
-          ))}
+        <div className={styles.clipsWrapper}>
+          <div ref={clipsRef} className={styles.clips}>
+            {clips.map((clip) => (
+              <ClipStrip
+                key={clip.id}
+                clip={clip}
+                isSelected={clip.id === selectedClipId}
+                onClick={() => onClipSelect(clip.id)}
+                onTrimChange={(trimStart, trimEnd) =>
+                  onTrimChange(clip.id, trimStart, trimEnd)
+                }
+              />
+            ))}
+          </div>
+          {/* Playhead indicator */}
+          <div
+            className={styles.playhead}
+            style={{ left: `${playheadPosition}px` }}
+          />
         </div>
         <button className={styles.addButton}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">

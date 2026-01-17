@@ -58,38 +58,76 @@ const VideoPlayer = forwardRef<PlayerRef, VideoPlayerProps>(
       }
     }, [isPlaying]);
 
-    // Set initial time when clip changes
+    // Set initial time when clip changes and continue playing if was playing
     useEffect(() => {
       if (videoRef.current && currentClip) {
         videoRef.current.currentTime = currentClip.trimStart;
-      }
-    }, [currentClipIndex, currentClip]);
-
-    // Handle time updates and clip transitions
-    const handleTimeUpdate = () => {
-      if (!videoRef.current || !currentClip) return;
-
-      const videoTime = videoRef.current.currentTime;
-      const clipEndTime = currentClip.duration - currentClip.trimEnd;
-
-      // Check if we need to switch to next clip
-      if (videoTime >= clipEndTime) {
-        if (currentClipIndex < clips.length - 1) {
-          setCurrentClipIndex(currentClipIndex + 1);
-        } else {
-          // End of all clips
-          videoRef.current.pause();
-          onPlayStateChange?.(false);
+        // Continue playing if isPlaying is true (auto-advance)
+        if (isPlaying) {
+          videoRef.current.play().catch(console.error);
         }
       }
+    }, [currentClipIndex, currentClip, isPlaying]);
 
-      // Calculate global timeline position
+    // Calculate global time from video time
+    const calculateGlobalTime = (videoTime: number) => {
       let globalTime = 0;
       for (let i = 0; i < currentClipIndex; i++) {
         globalTime += clips[i].duration - clips[i].trimStart - clips[i].trimEnd;
       }
-      globalTime += videoTime - currentClip.trimStart;
+      globalTime += videoTime - (currentClip?.trimStart || 0);
+      return globalTime;
+    };
 
+    // Use requestAnimationFrame for smooth playhead updates
+    useEffect(() => {
+      if (!isPlaying) return;
+
+      let animationId: number;
+
+      const updateTime = () => {
+        if (!videoRef.current || !currentClip) return;
+
+        const videoTime = videoRef.current.currentTime;
+        const clipEndTime = currentClip.duration - currentClip.trimEnd;
+
+        // Check if we need to switch to next clip
+        if (videoTime >= clipEndTime) {
+          if (currentClipIndex < clips.length - 1) {
+            setCurrentClipIndex(currentClipIndex + 1);
+          } else {
+            // End of all clips - reset to beginning
+            videoRef.current.pause();
+            setCurrentClipIndex(0);
+            setCurrentTime(0);
+            onTimeUpdate?.(0);
+            onPlayStateChange?.(false);
+            return;
+          }
+        }
+
+        const globalTime = calculateGlobalTime(videoTime);
+        setCurrentTime(globalTime);
+        onTimeUpdate?.(globalTime);
+
+        animationId = requestAnimationFrame(updateTime);
+      };
+
+      animationId = requestAnimationFrame(updateTime);
+
+      return () => {
+        cancelAnimationFrame(animationId);
+      };
+    }, [isPlaying, currentClipIndex, currentClip, clips, onTimeUpdate, onPlayStateChange]);
+
+    // Handle video ended event (fallback)
+    const handleTimeUpdate = () => {
+      // Keep as fallback for when not playing (e.g., seeking)
+      if (isPlaying) return;
+
+      if (!videoRef.current || !currentClip) return;
+      const videoTime = videoRef.current.currentTime;
+      const globalTime = calculateGlobalTime(videoTime);
       setCurrentTime(globalTime);
       onTimeUpdate?.(globalTime);
     };
@@ -98,6 +136,10 @@ const VideoPlayer = forwardRef<PlayerRef, VideoPlayerProps>(
       if (currentClipIndex < clips.length - 1) {
         setCurrentClipIndex(currentClipIndex + 1);
       } else {
+        // Reset to beginning
+        setCurrentClipIndex(0);
+        setCurrentTime(0);
+        onTimeUpdate?.(0);
         onPlayStateChange?.(false);
       }
     };

@@ -97,12 +97,40 @@
   gap: 12px;
 }
 
+.clipsWrapper {
+  position: relative;
+  flex: 1;
+}
+
 .clips {
   display: flex;
   gap: 8px;
   overflow-x: auto;
   padding: 4px;
-  flex: 1;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ea4335;
+  pointer-events: none;
+  z-index: 10;
+  transform: translateX(-1px);
+}
+
+.playhead::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #ea4335;
 }
 
 .addButton {
